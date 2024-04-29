@@ -6,7 +6,7 @@ Ferramenta de texto para converter todos os arquivos de código com os encodings
 ## Como uso essa disgraça?
 Uso:
 
-: Disgraca `<operação (convert|list)>` `<encoding desejado>` `<diretorio>` `<extensão *.xxx>` `[<demais extensões *.xxx>]` onde *.xxx é sua extensão com wildcards e sem <> []
+> Disgraca `<operação (convert|list)>` `<encoding desejado>` `<diretorio>` `<extensão *.xxx>` `[<demais extensões *.xxx>]` onde *.xxx é sua extensão com wildcards e sem <> []
 
 Exemplo: 
 
