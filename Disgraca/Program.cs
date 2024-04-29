@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,68 +8,77 @@ using System.Threading.Tasks;
 
 namespace Disgraca
 {
-    class Program
+    public static class Program
     {
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            if(args.Length < 3)
+            var op = new CommandArguments(args);
+            if (!op.Valid)
             {
-                Console.WriteLine("**** TÁ ERRADO PORRA ****");
-                Console.WriteLine("Você precisa de 3 argumentos");
-                Console.WriteLine("use Disgraca <encoding desejado> <diretorio> <extensão *.xxx> [<demais extensões *.xxx>] onde *.xxx é sua extensão com wildcards e sem <> [] bicho animal");
-                Console.WriteLine("Aqui espaços separam argumentos, então seu arquivo porco não pode ter espaços no nome. Não gostou faz melhor");
                 return;
             }
 
-
-
-            string targetEncoding = args[0];
-            string diretorio = args[1];
-
-            if(!Directory.Exists(diretorio) || ! ((File.GetAttributes(diretorio) & FileAttributes.Directory) == FileAttributes.Directory))
+            if (op.Operation == "convert")
             {
-                Console.WriteLine("**** MANO, VOCÊ É BURRO? ****");
-                Console.WriteLine("* VOCÊ É BURRO? *");
-                Console.WriteLine("* É LIMÍTROFE? *");
-
-                Console.WriteLine($"DESDE QUANDO {diretorio} É UM DIRETÓRIO VÁLIDO?!?!");
-
-                Console.WriteLine("SÓ SE FOR NA TUA TERRA!");
-
-                Console.WriteLine("use Disgraca <encoding desejado> <diretorio> <extensão *.xxx> [<demais extensões *.xxx>] onde *.xxx é sua extensão com wildcards e sem <> [] bicho animal");
-                Console.WriteLine("Aqui espaços separam argumentos, então seu arquivo porco não pode ter espaços no nome. Não gostou faz melhor");
-                return;
+                Convert(op);
             }
 
-            for(int i=2; i<args.Length; i++)
+            if (op.Operation == "list")
+            {
+                ListCharsets(op);
+            }
+
+        }
+
+        private static void Convert(CommandArguments op)
+        {
+            foreach (var file in op.Files)
             {
                 try
                 {
-                    foreach (var f in new DirectoryInfo(diretorio).GetFiles(args[i], SearchOption.AllDirectories))
+                    foreach (var fullName in new DirectoryInfo(op.Path).GetFiles(file, SearchOption.AllDirectories).Select(x => x.FullName))
                     {
-                        var fileEnc = GetEncoding(f.FullName);
-                        if (fileEnc != null && !string.Equals(fileEnc, targetEncoding, StringComparison.OrdinalIgnoreCase))
+                        var fileEnc = Translate( GetEncoding(fullName));
+                        if (fileEnc != null && !string.Equals(fileEnc, op.DestinationEncoding, StringComparison.OrdinalIgnoreCase))
                         {
 
-                            var str = File.ReadAllText(f.FullName, Encoding.GetEncoding(fileEnc));
-                            File.WriteAllText(f.FullName, str, Encoding.GetEncoding(targetEncoding));
+                            var str = File.ReadAllText(fullName, Encoding.GetEncoding(fileEnc));
+                            File.WriteAllText(fullName, str, Encoding.GetEncoding(op.DestinationEncoding));
 
-                            Console.WriteLine($"Arquivo {f.FullName} convertido de {fileEnc} para {targetEncoding}");
+                            Console.WriteLine($"Arquivo {fullName} convertido de {fileEnc} para {op.DestinationEncoding}");
 
                         }
                     }
                 }
-                catch(Exception err)
+                catch (Exception err)
                 {
-                    Console.WriteLine("Meua migo, alguma merda nós fizemos (provavelmente só você), lê aí e vê que que deu: " + err.Message);
+                    Console.WriteLine("Ocorreu o seguinte erro" + err.Message);
                     return;
                 }
 
             }
+        }
 
+        private static void ListCharsets(CommandArguments op)
+        {
+            foreach (var file in op.Files)
+            {
+                try
+                {
+                    foreach (var fullName in new DirectoryInfo(op.Path).GetFiles(file, SearchOption.AllDirectories).Select(x => x.FullName))
+                    {
+                        var fileEnc = ListEncoding(fullName);
+                        Console.WriteLine($"Arquivo {fullName} Ã© {Translate(fileEnc.Charset)} com {fileEnc.Confidence} de certeza");
+                    }
+                }
+                catch (Exception err)
+                {
+                    Console.WriteLine("Ocorreu o seguinte erro" + err.Message);
+                    return;
+                }
 
-            Console.WriteLine("Feito!");
+            }
         }
 
         private static string GetEncoding(string filename)
@@ -78,12 +88,36 @@ namespace Disgraca
                 var cdet = new Ude.CharsetDetector();
                 cdet.Feed(fs);
                 cdet.DataEnd();
-                //if (cdet.Charset != null)
-                //    Console.WriteLine("Charset: {0}, confidence: {1} : " + filename, cdet.Charset, cdet.Confidence);
-                //else
-                //    Console.WriteLine("Detection failed: " + filename);
                 return cdet.Charset;
             }
+        }
+
+
+        private static (string Charset, string Confidence) ListEncoding(string filename)
+        {
+            using (var fs = File.OpenRead(filename))
+            {
+                var cdet = new Ude.CharsetDetector();
+                cdet.Feed(fs);
+                cdet.DataEnd();
+                return (cdet.Charset, cdet.Confidence.ToString("P2"));
+            }
+        }
+
+
+        private static readonly ImmutableDictionary<string, string> _standardEncodings = ImmutableDictionary.CreateRange(new Dictionary<string, string>
+            {
+                {"windows-1252", "ISO-8859-1" }
+            });
+
+        public static string Translate(string encoding)
+        {
+            if (!_standardEncodings.ContainsKey(encoding))
+            {
+                return encoding;
+            }
+
+            return _standardEncodings[encoding];
         }
     }
 }

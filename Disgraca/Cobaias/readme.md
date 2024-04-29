@@ -1,4 +1,4 @@
-# Disgra�a
+# Disgraça
 
 ## O que essa disgraça faz?
 Ferramenta de texto para converter todos os arquivos de código com os encodings desgraçados que você não usa para a desgraça de encoding que você usa (e que seja utf-8 né?!).
